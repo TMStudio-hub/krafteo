@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Krafteo Studio V3.6</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Firebase Cloud Sync -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+
   <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
@@ -64,6 +69,25 @@ background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(255,247,232,.92));
       <span class="px-3 py-2 rounded-2xl bg-[#ffe08a]">📦 Inventario</span>
       <span class="px-3 py-2 rounded-2xl bg-[#c8b6ff]">🧾 Pedidos</span>
       <span class="px-3 py-2 rounded-2xl bg-[#ffb39b]">💰 Insights</span>
+    </div>
+  </div>
+
+  
+  <div class="rounded-[2rem] doodle p-4 mb-5 bg-white">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 class="font-display text-xl font-bold">Backup & Excel</h2>
+        <p class="text-sm font-bold text-[#8b7467]">Copia tus datos, restáuralos o exporta resumen para Excel.</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button @click="exportBackup()" class="btn btn-dark">Exportar backup</button>
+        <label class="btn btn-light cursor-pointer">
+          Importar backup
+          <input type="file" accept=".json" class="hidden" @change="importBackup($event)">
+        </label>
+        <button @click="exportCSV()" class="btn bg-[#9ee6c4]">Exportar CSV</button>
+        <button @click="screen='sync'" class="btn bg-[#c8b6ff]">Sync Firebase</button>
+      </div>
     </div>
   </div>
 
@@ -168,6 +192,46 @@ background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(255,247,232,.92));
   </div>
 </section>
 
+
+<section x-show="screen==='sync'" x-cloak>
+  <div class="mb-4">
+    <h2 class="font-display text-3xl font-bold">Sincronización Firebase</h2>
+    <p class="text-[#8b7467] font-bold">Para usar móvil y ordenador con los mismos datos.</p>
+  </div>
+
+  <div class="rounded-3xl p-5 bg-white doodle mb-4">
+    <h3 class="font-display text-xl font-bold mb-2">Estado</h3><div class="mb-3 rounded-2xl p-3 bg-[#9ee6c4]/40 font-bold" x-text="cloudStatus"></div>
+    <div class="grid md:grid-cols-3 gap-3">
+      <div class="rounded-2xl p-3 bg-[#fff7e8]">
+        <div class="text-xs font-bold text-[#8b7467]">Modo actual</div>
+        <div class="font-display font-bold text-xl" x-text="firebaseReady ? 'Cloud listo' : 'Local'"></div>
+      </div>
+      <div class="rounded-2xl p-3 bg-[#fff7e8]">
+        <div class="text-xs font-bold text-[#8b7467]">Última nube</div>
+        <div class="font-display font-bold text-xl" x-text="lastCloudSync || 'Nunca'"></div>
+      </div>
+      <div class="rounded-2xl p-3 bg-[#fff7e8]">
+        <div class="text-xs font-bold text-[#8b7467]">Datos guardados</div>
+        <div class="font-display font-bold text-xl" x-text="orders.length+' pedidos'"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rounded-3xl p-5 bg-white doodle">
+    <h3 class="font-display text-xl font-bold mb-2">Config Firebase</h3>
+    <p class="text-sm font-bold text-[#8b7467] mb-3">Pega aquí el objeto firebaseConfig cuando creemos el proyecto. Hasta entonces, Krafteo funciona en local.</p>
+    <textarea x-model="firebaseConfigText" rows="8" class="field font-mono text-xs" placeholder='{"apiKey":"...","authDomain":"...","projectId":"..."}'></textarea>
+    <div class="flex flex-wrap gap-2 mt-3">
+      <button @click="saveFirebaseConfig()" class="btn btn-dark">Guardar configuración</button>
+      <button @click="pushToCloud()" class="btn bg-[#9ee6c4]">Subir datos a nube</button>
+      <button @click="pullFromCloud()" class="btn bg-[#c8b6ff]">Bajar datos de nube</button>
+    </div>
+    <div class="mt-3 rounded-2xl p-3 bg-[#ffe08a]/40 text-sm font-bold">
+      Cloud listo: pulsa “Subir datos a nube” desde el ordenador principal. En el móvil abre la app y pulsa “Bajar datos de nube”.
+    </div>
+  </div>
+</section>
+
 </main>
 
 <nav class="fixed bottom-0 left-0 right-0 z-40 no-print bg-white/95 backdrop-blur border-t-2 border-[#34241e]/10">
@@ -227,15 +291,15 @@ background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(255,247,232,.92));
 
 <script>
 function app(){return{
-screen:'home',orderFilter:'Todos',detailOpen:false,orderTab:'Resumen',orderModal:false,materialModal:false,recipeModal:false,clientModal:false,selectedOrder:null,logDraft:'',paymentDraft:{amount:null,method:'Bizum'},
-nav:[{id:'home',icon:'🏠',label:'Inicio'},{id:'orders',icon:'🛍️',label:'Pedidos'},{id:'clients',icon:'👤',label:'Clientes'},{id:'inventory',icon:'📦',label:'Stock'},{id:'recipes',icon:'🧪',label:'Recetas'},{id:'insights',icon:'📈',label:'Insights'}],
+screen:'home',orderFilter:'Todos',detailOpen:false,orderTab:'Resumen',orderModal:false,materialModal:false,recipeModal:false,clientModal:false,selectedOrder:null,logDraft:'',paymentDraft:{amount:null,method:'Bizum'},firebaseConfigText:localStorage.getItem('krafteo-firebase-config')||`{\n  "apiKey": "AIzaSyDJG3CiFJlI2QhtE3bGxlls-TwyreKHQE8",\n  "authDomain": "krafteo-51c70.firebaseapp.com",\n  "projectId": "krafteo-51c70",\n  "storageBucket": "krafteo-51c70.firebasestorage.app",\n  "messagingSenderId": "947476458528",\n  "appId": "1:947476458528:web:3177b013c4776f111ca045"\n}`,firebaseReady:false,db:null,cloudDoc:null,cloudStatus:'Sin conectar',lastCloudSync:'Nunca',lastBackup:localStorage.getItem('krafteo-last-backup')||'',
+nav:[{id:'home',icon:'🏠',label:'Inicio'},{id:'orders',icon:'🛍️',label:'Pedidos'},{id:'clients',icon:'👤',label:'Clientes'},{id:'inventory',icon:'📦',label:'Stock'},{id:'recipes',icon:'🧪',label:'Recetas'},{id:'sync',icon:'☁️',label:'Sync'},{id:'insights',icon:'📈',label:'Insights'}],
 settings:{laborHour:8,hiddenCost:.25},
 clients:[{id:'c1',name:'Laura Gómez',phone:'600111222',email:'',notes:'Prefiere entrega por la tarde.'},{id:'c2',name:'Colegio Peñalvento',phone:'',email:'',notes:'Pedidos grandes de fin de curso.'}],
 materials:[{id:'m1',name:'Vaso verde',category:'Vasos',provider:'Temu',stock:6,min:3,unit:'ud',totalPrice:4.25,unitCost:.71},{id:'m2',name:'Llavero',category:'Llaveros',provider:'AliExpress',stock:32,min:8,unit:'ud',totalPrice:5,unitCost:.16},{id:'m3',name:'Listón',category:'Lazos',provider:'Bazar',stock:500,min:100,unit:'cm',totalPrice:2,unitCost:.004},{id:'m4',name:'Celofán',category:'Packaging',provider:'Bazar',stock:200,min:80,unit:'cm',totalPrice:2,unitCost:.01},{id:'m5',name:'Pegatina impresa',category:'Impresión',provider:'Impresora',stock:60,min:10,unit:'ud',totalPrice:7.2,unitCost:.12}],
 recipes:[{id:'r1',icon:'🥤',name:'Vaso graduación kinder',price:6.95,laborMin:15,defaultSteps:['Vasos comprados','Pegatinas diseñadas','Pegatinas impresas','Pegatinas colocadas','Llaveros listos','Packs montados','Embolsados','Entregados'],items:[{materialId:'m1',qty:1},{materialId:'m2',qty:1},{materialId:'m3',qty:50},{materialId:'m4',qty:40},{materialId:'m5',qty:1}]},{id:'r2',icon:'🎁',name:'Pack detallito dragón',price:4.95,laborMin:8,defaultSteps:['Materiales preparados','Pegatina lista','Montaje terminado','Empaquetado','Entregado'],items:[{materialId:'m2',qty:1},{materialId:'m3',qty:30},{materialId:'m4',qty:25},{materialId:'m5',qty:1}]}],
 orders:[],orderDraft:{},materialDraft:{},recipeDraft:{},clientDraft:{},
 init(){const saved=localStorage.getItem('dragones-v35');if(saved){Object.assign(this,JSON.parse(saved));this.selectedOrder=null;this.detailOpen=false;this.recipes.forEach(r=>{if(!r.defaultSteps)r.defaultSteps=['Materiales preparados','Personalización lista','Montaje terminado','Empaquetado','Entregado']})}else{this.orders=[this.makeOrder({clientId:'c2',recipeId:'r1',qty:30,unitPrice:6.95,due:this.datePlus(3),status:'Fabricando',notes:'Pedido de graduación. Confirmar colores antes de cerrar.'})];this.orders[0].steps[2].done=18;this.orders[0].steps[3].done=10;this.orders[0].steps[5].done=12;this.orders[0].steps[7].done=15;this.orders[0].payments=[{id:Date.now(),date:this.today(),method:'Bizum',amount:50}];this.orders[0].logs=[{id:Date.now()+1,date:this.now(),text:'Pedido creado.'},{id:Date.now()+2,date:this.now(),text:'Entregados 15 vasos de 30.'}]}
-this.$watch('orders',()=>this.persist(),{deep:true});this.$watch('clients',()=>this.persist(),{deep:true});this.$watch('materials',()=>this.persist(),{deep:true});this.$watch('recipes',()=>this.persist(),{deep:true})},
+this.$watch('orders',()=>{this.persist();this.autoCloudSave()},{deep:true});this.$watch('clients',()=>{this.persist();this.autoCloudSave()},{deep:true});this.$watch('materials',()=>{this.persist();this.autoCloudSave()},{deep:true});this.$watch('recipes',()=>{this.persist();this.autoCloudSave()},{deep:true});this.initFirebase()},
 persist(){localStorage.setItem('dragones-v35',JSON.stringify({clients:this.clients,materials:this.materials,recipes:this.recipes,orders:this.orders,settings:this.settings}))},
 money(n){return(Number(n)||0).toFixed(2).replace('.',',')+'€'},today(){return new Date().toLocaleDateString('es-ES')},now(){return new Date().toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'})},datePlus(d){const x=new Date();x.setDate(x.getDate()+d);return x.toISOString().slice(0,10)},fmtDate(d){if(!d)return'-';return new Date(d+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'short'})},
 copy(t){navigator.clipboard.writeText(t||'');alert('Copiado')},cleanPhone(p){return String(p||'').replace(/\D/g,'').replace(/^0/,'')},
@@ -259,6 +323,18 @@ calcMaterialUnitCost(m){return(Number(m.stock)||0)>0?(Number(m.totalPrice)||0)/(
 openRecipeModal(){this.recipeDraft={id:null,icon:'✨',name:'',price:0,laborMin:0,items:[],defaultSteps:['Materiales preparados','Personalización lista','Montaje terminado','Empaquetado','Entregado']};this.recipeModal=true},editRecipe(r){this.recipeDraft=JSON.parse(JSON.stringify(r));if(!this.recipeDraft.defaultSteps)this.recipeDraft.defaultSteps=['Materiales preparados','Personalización lista','Montaje terminado','Empaquetado','Entregado'];this.recipeModal=true},saveRecipe(){if(!this.recipeDraft.name)return;if(this.recipeDraft.id){const i=this.recipes.findIndex(r=>r.id===this.recipeDraft.id);this.recipes.splice(i,1,JSON.parse(JSON.stringify(this.recipeDraft)))}else{this.recipeDraft.id='r'+Date.now();this.recipes.push(JSON.parse(JSON.stringify(this.recipeDraft)))}this.recipeModal=false},duplicateRecipe(r){const c=JSON.parse(JSON.stringify(r));c.id='r'+Date.now();c.name=c.name+' copia';this.recipes.push(c)},deleteRecipe(r){if(!confirm('¿Borrar esta receta?'))return;this.recipes=this.recipes.filter(x=>x.id!==r.id);this.recipeModal=false},
 openClientModal(){this.clientDraft={id:null,name:'',phone:'',email:'',notes:''};this.clientModal=true},editClient(c){this.clientDraft=JSON.parse(JSON.stringify(c));this.clientModal=true},saveClient(){if(!this.clientDraft.name)return;if(this.clientDraft.id){const i=this.clients.findIndex(c=>c.id===this.clientDraft.id);this.clients.splice(i,1,JSON.parse(JSON.stringify(this.clientDraft)))}else{this.clientDraft.id='c'+Date.now();this.clients.push(JSON.parse(JSON.stringify(this.clientDraft)))}this.clientModal=false},
 totalSales(){return this.orders.reduce((s,o)=>s+this.orderTotal(o),0)},totalCosts(){return this.orders.reduce((s,o)=>s+this.orderCost(o),0)},stockValue(){return this.materials.reduce((s,m)=>s+(Number(m.stock)||0)*(Number(m.unitCost)||0),0)},topRecipes(){return [...this.recipes].sort((a,b)=>(b.price-this.recipeCost(b))-(a.price-this.recipeCost(a))).slice(0,5)}
+,allData(){return{version:'Krafteo V5',date:new Date().toISOString(),clients:this.clients,materials:this.materials,recipes:this.recipes,orders:this.orders,settings:this.settings}},
+downloadFile(name,content,type='application/json'){const blob=new Blob([content],{type});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href)},
+exportBackup(){const stamp=new Date().toISOString().slice(0,10);this.lastBackup=new Date().toLocaleString('es-ES');localStorage.setItem('krafteo-last-backup',this.lastBackup);this.downloadFile('krafteo-backup-'+stamp+'.json',JSON.stringify(this.allData(),null,2))},
+importBackup(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const data=JSON.parse(reader.result);if(!confirm('Esto reemplazará los datos actuales por el backup. ¿Continuar?'))return;this.clients=data.clients||[];this.materials=data.materials||[];this.recipes=data.recipes||[];this.orders=data.orders||[];this.settings=data.settings||this.settings;this.persist();alert('Backup importado correctamente')}catch(err){alert('No se pudo importar el backup')}};reader.readAsText(file)},
+csvEscape(v){v=(v??'').toString();return '"' + v.replaceAll('"','""') + '"'},
+exportCSV(){let rows=[];rows.push(['tipo','numero','cliente','producto','cantidad','precio_unitario','total','pagado','pendiente','estado','entrega','entregados'].map(this.csvEscape).join(','));this.orders.forEach(o=>{rows.push(['pedido',o.num,this.clientName(o.clientId),o.title,o.qty,o.unitPrice,this.orderTotal(o),this.orderPaid(o),this.orderDue(o),o.status,o.due,this.deliveredQty(o)].map(x=>this.csvEscape(x)).join(','))});rows.push([]);rows.push(['material','nombre','stock','unidad','coste_unitario','proveedor'].map(this.csvEscape).join(','));this.materials.forEach(m=>rows.push(['material',m.name,m.stock,m.unit,m.unitCost,m.provider].map(x=>this.csvEscape(x)).join(',')));rows.push([]);rows.push(['insight','valor'].map(this.csvEscape).join(','));rows.push(['ventas_totales',this.totalSales?this.totalSales():this.orders.reduce((s,o)=>s+this.orderTotal(o),0)].map(x=>this.csvEscape(x)).join(','));rows.push(['coste_estimado',this.totalCosts?this.totalCosts():this.orders.reduce((s,o)=>s+this.orderCost(o),0)].map(x=>this.csvEscape(x)).join(','));rows.push(['ganancia_estimada',(this.totalSales?this.totalSales():this.orders.reduce((s,o)=>s+this.orderTotal(o),0))-(this.totalCosts?this.totalCosts():this.orders.reduce((s,o)=>s+this.orderCost(o),0))].map(x=>this.csvEscape(x)).join(','));this.downloadFile('krafteo-insights.csv',rows.join('\n'),'text/csv;charset=utf-8')},
+initFirebase(){try{const cfg=JSON.parse(this.firebaseConfigText);localStorage.setItem('krafteo-firebase-config',this.firebaseConfigText);if(!firebase.apps.length){firebase.initializeApp(cfg)}this.db=firebase.firestore();this.cloudDoc=this.db.collection('krafteo').doc('main');this.firebaseReady=true;this.cloudStatus='Cloud conectado';}catch(e){this.firebaseReady=false;this.cloudStatus='Local';console.warn('Firebase no iniciado',e)}},
+saveFirebaseConfig(){try{JSON.parse(this.firebaseConfigText);localStorage.setItem('krafteo-firebase-config',this.firebaseConfigText);this.initFirebase();alert(this.firebaseReady?'Firebase conectado':'No se pudo conectar Firebase')}catch(e){alert('El texto no parece un JSON válido')}},
+async pushToCloud(){if(!this.firebaseReady||!this.cloudDoc){this.initFirebase()}if(!this.firebaseReady){alert('Firebase no está conectado');return}try{await this.cloudDoc.set({data:this.allData(),updatedAt:new Date().toISOString()});this.lastCloudSync=new Date().toLocaleString('es-ES');this.cloudStatus='Subido a nube';alert('Datos subidos a Firebase correctamente')}catch(e){console.error(e);alert('No se pudo subir a Firebase. Revisa reglas de Firestore.')}},
+async pullFromCloud(){if(!this.firebaseReady||!this.cloudDoc){this.initFirebase()}if(!this.firebaseReady){alert('Firebase no está conectado');return}try{const snap=await this.cloudDoc.get();if(!snap.exists){alert('No hay datos en la nube todavía. Primero pulsa Subir datos a nube.');return}const data=snap.data().data;if(!confirm('Esto reemplazará los datos locales por los de Firebase. ¿Continuar?'))return;this.clients=data.clients||[];this.materials=data.materials||[];this.recipes=data.recipes||[];this.orders=data.orders||[];this.settings=data.settings||this.settings;this.persist();this.lastCloudSync=new Date().toLocaleString('es-ES');this.cloudStatus='Bajado de nube';alert('Datos descargados desde Firebase')}catch(e){console.error(e);alert('No se pudo bajar de Firebase. Revisa reglas de Firestore.')}},
+_cloudTimer:null,autoCloudSave(){if(!this.firebaseReady||!this.cloudDoc)return;clearTimeout(this._cloudTimer);this._cloudTimer=setTimeout(()=>{this.cloudDoc.set({data:this.allData(),updatedAt:new Date().toISOString()},{merge:true}).then(()=>{this.lastCloudSync=new Date().toLocaleString('es-ES');this.cloudStatus='Guardado automático'}).catch(e=>console.warn('Auto cloud save error',e))},1200)}
+
 }}
 </script>
 </body>
