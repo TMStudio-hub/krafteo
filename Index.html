@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Taller de Dragones Studio V3.6</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{--cream:#fff7e8;--paper:#fffdf7;--ink:#34241e;--muted:#8b7467;--peach:#ffb39b;--mint:#9ee6c4;--lav:#c8b6ff;--yellow:#ffe08a;--rose:#ff7aa8;--red:#ff6b6b;--blue:#70a1ff}
+    body{font-family:Nunito,system-ui,sans-serif;background:radial-gradient(circle at 15% 6%,rgba(255,179,155,.32),transparent 24%),radial-gradient(circle at 85% 3%,rgba(200,182,255,.32),transparent 22%),radial-gradient(circle at 50% 95%,rgba(158,230,196,.32),transparent 22%),var(--cream);color:var(--ink)}
+    .font-display{font-family:Fredoka,system-ui,sans-serif}.doodle{border:2px solid var(--ink);box-shadow:4px 5px 0 rgba(52,36,30,.12)}.soft{box-shadow:0 12px 35px rgba(52,36,30,.10)}
+    .tab-active{background:var(--ink);color:var(--cream)}.progress{height:10px;background:rgba(52,36,30,.10);border-radius:999px;overflow:hidden}.progress>div{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--peach),var(--lav),var(--mint))}
+    input,select,textarea{outline:none}.field{padding:.85rem;border-radius:1rem;border:2px solid rgba(52,36,30,.16);background:#fff7e8;width:100%;font-weight:700}.label{font-size:.75rem;font-weight:900;color:var(--muted);margin-bottom:.25rem;display:block}.btn{border-radius:1rem;font-weight:900;padding:.7rem 1rem}.btn-dark{background:var(--ink);color:white}.btn-light{background:white;border:2px solid rgba(52,36,30,.16)}[x-cloak]{display:none!important}
+    @media print{.no-print{display:none!important}body{background:white}.print-card{box-shadow:none!important;border:1px solid #ddd!important}}
+  </style>
+</head>
+<body x-data="app()" x-init="init()" class="min-h-screen pb-24">
+
+<header class="sticky top-0 z-40 no-print bg-[#fff7e8]/92 backdrop-blur border-b-2 border-[#34241e]/10">
+  <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+    <button @click="screen='home'" class="flex items-center gap-3">
+      <div class="w-12 h-12 rounded-full bg-white doodle grid place-items-center overflow-hidden">
+        <svg viewBox="0 0 100 100" class="w-11 h-11"><circle cx="50" cy="50" r="39" fill="none" stroke="#34241e" stroke-width="5" stroke-linecap="round" stroke-dasharray="8 7"/><circle cx="38" cy="43" r="4" fill="#34241e"/><circle cx="62" cy="43" r="4" fill="#34241e"/><path d="M35 60 Q50 74 66 60" fill="none" stroke="#34241e" stroke-width="5" stroke-linecap="round"/><path d="M20 26 q10-20 22-4 M58 22 q13-17 24 4" fill="none" stroke="#ff7aa8" stroke-width="4" stroke-linecap="round"/></svg>
+      </div>
+      <div class="text-left"><h1 class="font-display text-xl font-bold leading-none">Taller de Dragones</h1><p class="text-xs font-bold text-[#8b7467]">Pedidos · stock · bitácora</p></div>
+    </button>
+    <button @click="openOrderModal()" class="btn btn-dark soft">+ Pedido</button>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-4 py-5">
+
+<section x-show="screen==='home'" x-cloak>
+  <div class="grid md:grid-cols-4 gap-3 mb-5">
+    <button @click="goOrders('Pendiente')" class="rounded-3xl p-4 doodle bg-white text-left"><div class="text-2xl">🛍️</div><div class="text-2xl font-display font-bold" x-text="orders.filter(o=>o.status==='Pendiente').length"></div><div class="text-xs font-bold text-[#8b7467]">Pedidos pendientes</div></button>
+    <button @click="goOrders('Fabricando')" class="rounded-3xl p-4 doodle bg-white text-left"><div class="text-2xl">🏭</div><div class="text-2xl font-display font-bold" x-text="orders.filter(o=>o.status==='Fabricando').length"></div><div class="text-xs font-bold text-[#8b7467]">Fabricando</div></button>
+    <button @click="screen='inventory'" class="rounded-3xl p-4 doodle bg-white text-left"><div class="text-2xl">📦</div><div class="text-2xl font-display font-bold" x-text="materials.filter(m=>m.stock<=m.min).length"></div><div class="text-xs font-bold text-[#8b7467]">Stock bajo</div></button>
+    <button @click="showUpcoming()" class="rounded-3xl p-4 doodle bg-white text-left"><div class="text-2xl">📅</div><div class="text-2xl font-display font-bold" x-text="urgentOrders().length"></div><div class="text-xs font-bold text-[#8b7467]">Entregas próximas</div></button>
+  </div>
+
+  <div class="grid lg:grid-cols-3 gap-4">
+    <div class="lg:col-span-2 rounded-3xl p-4 bg-white doodle">
+      <div class="flex items-center justify-between mb-3"><h2 class="font-display text-xl font-bold">Qué toca hoy ✨</h2><button @click="screen='orders'" class="text-sm font-bold underline">Ver pedidos</button></div>
+      <div class="space-y-3">
+        <template x-for="o in urgentOrders()" :key="o.id">
+          <button @click="openOrder(o.id)" class="w-full text-left rounded-2xl p-3 bg-[#fff7e8] border-2 border-[#34241e]/10">
+            <div class="flex justify-between gap-2"><div><div class="font-display font-bold" x-text="'#'+o.num+' · '+clientName(o.clientId)"></div><div class="text-sm text-[#8b7467]" x-text="o.title+' · '+o.qty+' uds · Entrega '+fmtDate(o.due)"></div></div><span class="text-xs px-2 py-1 rounded-full h-fit font-bold" :class="statusClass(o.status)" x-text="o.status"></span></div>
+            <div class="mt-2 flex items-center gap-2"><div class="progress flex-1"><div :style="'width:'+orderProgress(o)+'%'"></div></div><span class="text-xs font-bold" x-text="orderProgress(o)+'%'"></span></div>
+          </button>
+        </template>
+      </div>
+    </div>
+    <div class="rounded-3xl p-4 bg-white doodle">
+      <h2 class="font-display text-xl font-bold mb-3">Alertas</h2>
+      <div class="space-y-2">
+        <template x-for="a in alertObjects()" :key="a.key">
+          <button @click="handleAlert(a)" class="w-full text-left rounded-2xl p-3 bg-[#ffe08a]/45 font-bold text-sm" x-text="a.text"></button>
+        </template>
+        <div x-show="alertObjects().length===0" class="text-sm text-[#8b7467] font-bold">Todo controlado.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section x-show="screen==='orders'" x-cloak>
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-4"><div><h2 class="font-display text-3xl font-bold">Pedidos</h2><p class="text-[#8b7467] font-bold">Progreso, pagos, bitácora y recibos.</p></div><div class="flex gap-2 overflow-x-auto"><template x-for="s in ['Todos','Pendiente','Comprando','Fabricando','Terminado','Entregado']"><button @click="orderFilter=s" class="px-3 py-2 rounded-2xl font-bold border-2 border-[#34241e]/20 whitespace-nowrap" :class="orderFilter===s?'tab-active':'bg-white'" x-text="s"></button></template></div></div>
+  <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+    <template x-for="o in filteredOrders()" :key="o.id">
+      <button @click="openOrder(o.id)" class="text-left rounded-3xl p-4 bg-white doodle hover:-translate-y-0.5 transition">
+        <div class="flex justify-between gap-2"><div><div class="font-display font-bold text-lg" x-text="'Pedido #'+o.num"></div><div class="font-bold" x-text="clientName(o.clientId)"></div><div class="text-sm text-[#8b7467]" x-text="o.title+' · '+o.qty+' uds'"></div></div><span class="text-xs px-2 py-1 rounded-full h-fit font-bold" :class="statusClass(o.status)" x-text="o.status"></span></div>
+        <div class="mt-3"><div class="flex justify-between text-xs font-bold mb-1"><span x-text="deliveredQty(o)+'/'+o.qty+' entregados'"></span><span x-text="orderProgress(o)+'%'"></span></div><div class="progress"><div :style="'width:'+orderProgress(o)+'%'"></div></div></div>
+        <div class="grid grid-cols-3 gap-2 mt-3 text-center"><div class="rounded-2xl bg-[#fff7e8] p-2"><div class="font-bold" x-text="money(orderTotal(o))"></div><div class="text-[10px] text-[#8b7467] font-bold">Total</div></div><div class="rounded-2xl bg-[#fff7e8] p-2"><div class="font-bold" x-text="money(orderDue(o))"></div><div class="text-[10px] text-[#8b7467] font-bold">Pendiente</div></div><div class="rounded-2xl bg-[#fff7e8] p-2"><div class="font-bold" x-text="fmtDate(o.due)"></div><div class="text-[10px] text-[#8b7467] font-bold">Entrega</div></div></div>
+      </button>
+    </template>
+  </div>
+</section>
+
+<section x-show="screen==='clients'" x-cloak>
+  <div class="flex items-center justify-between mb-4"><div><h2 class="font-display text-3xl font-bold">Clientes</h2><p class="text-[#8b7467] font-bold">Contactos, WhatsApp e historial.</p></div><button @click="openClientModal()" class="btn btn-dark">+ Cliente</button></div>
+  <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+    <template x-for="c in clients" :key="c.id">
+      <div class="rounded-3xl p-4 bg-white doodle">
+        <div class="flex justify-between gap-2"><div><div class="font-display font-bold text-xl" x-text="c.name"></div><div class="text-sm text-[#8b7467]" x-text="c.phone || 'Sin teléfono'"></div><div class="text-sm text-[#8b7467]" x-text="c.email || ''"></div></div><button @click="editClient(c)" class="text-xl">✏️</button></div>
+        <div class="flex flex-wrap gap-2 mt-3">
+          <button @click="copy(c.phone)" class="btn btn-light text-sm" x-show="c.phone">Copiar tel.</button>
+          <a :href="'https://wa.me/'+cleanPhone(c.phone)" target="_blank" class="btn bg-[#9ee6c4] text-sm" x-show="c.phone">WhatsApp</a>
+          <button @click="copy(c.email)" class="btn btn-light text-sm" x-show="c.email">Copiar email</button>
+          <a :href="'mailto:'+c.email" class="btn bg-[#c8b6ff] text-sm" x-show="c.email">Email</a>
+        </div>
+        <div class="grid grid-cols-3 gap-2 mt-3 text-center"><div class="rounded-2xl bg-[#fff7e8] p-2"><div class="font-bold" x-text="clientOrders(c.id).length"></div><div class="text-[10px] font-bold text-[#8b7467]">Pedidos</div></div><div class="rounded-2xl bg-[#fff7e8] p-2"><div class="font-bold" x-text="money(clientSpent(c.id))"></div><div class="text-[10px] font-bold text-[#8b7467]">Total</div></div><div class="rounded-2xl bg-[#fff7e8] p-2"><div class="font-bold" x-text="clientPending(c.id)"></div><div class="text-[10px] font-bold text-[#8b7467]">Pendientes</div></div></div>
+        <p class="mt-3 text-sm text-[#8b7467]" x-text="c.notes"></p>
+      </div>
+    </template>
+  </div>
+</section>
+
+<section x-show="screen==='inventory'" x-cloak>
+  <div class="flex items-center justify-between mb-4"><div><h2 class="font-display text-3xl font-bold">Inventario</h2><p class="text-[#8b7467] font-bold">Materiales editables y con coste automático.</p></div><button @click="openMaterialModal()" class="btn btn-dark">+ Material</button></div>
+  <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+    <template x-for="m in materials" :key="m.id">
+      <div class="rounded-3xl p-4 bg-white doodle">
+        <div class="flex justify-between"><div><div class="font-display font-bold text-lg" x-text="m.name"></div><div class="text-sm text-[#8b7467]" x-text="m.provider+' · '+m.unit"></div></div><div class="flex gap-2"><button @click="editMaterial(m)">✏️</button><button @click="deleteMaterial(m)">🗑️</button></div></div>
+        <div class="mt-3 flex justify-between font-bold"><span>Stock</span><span x-text="m.stock+' '+m.unit"></span></div><div class="mt-1 flex justify-between text-sm text-[#8b7467] font-bold"><span>Coste</span><span x-text="money(m.unitCost)+' / '+m.unit"></span></div><div x-show="m.stock<=m.min" class="mt-3 rounded-2xl p-2 bg-[#ff6b6b]/20 font-bold text-sm">⚠️ Stock bajo</div>
+      </div>
+    </template>
+  </div>
+</section>
+
+<section x-show="screen==='recipes'" x-cloak>
+  <div class="flex items-center justify-between mb-4"><div><h2 class="font-display text-3xl font-bold">Recetas</h2><p class="text-[#8b7467] font-bold">Edita lo que usa cada producto.</p></div><button @click="openRecipeModal()" class="btn btn-dark">+ Receta</button></div>
+  <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+    <template x-for="r in recipes" :key="r.id">
+      <div class="rounded-3xl p-4 bg-white doodle">
+        <div class="flex justify-between"><div><div class="text-3xl mb-2" x-text="r.icon"></div><div class="font-display font-bold text-xl" x-text="r.name"></div><div class="text-sm text-[#8b7467] font-bold" x-text="r.items.length+' materiales · '+r.laborMin+' min trabajo'"></div></div><div class="flex gap-2"><button @click="editRecipe(r)">✏️</button><button @click="duplicateRecipe(r)">📋</button><button @click="deleteRecipe(r)">🗑️</button></div></div>
+        <div class="grid grid-cols-3 gap-2 mt-3 text-center"><div class="rounded-2xl bg-[#fff7e8] p-2"><div class="font-bold" x-text="money(recipeCost(r))"></div><div class="text-[10px] text-[#8b7467] font-bold">Coste</div></div><div class="rounded-2xl bg-[#fff7e8] p-2"><div class="font-bold" x-text="money(r.price)"></div><div class="text-[10px] text-[#8b7467] font-bold">Venta</div></div><div class="rounded-2xl bg-[#fff7e8] p-2"><div class="font-bold" x-text="money(r.price-recipeCost(r))"></div><div class="text-[10px] text-[#8b7467] font-bold">Beneficio</div></div></div>
+      </div>
+    </template>
+  </div>
+</section>
+
+<section x-show="screen==='insights'" x-cloak>
+  <div class="mb-4"><h2 class="font-display text-3xl font-bold">Insights</h2><p class="text-[#8b7467] font-bold">Dinero, inversión, ventas y margen fuera de la home.</p></div>
+  <div class="grid md:grid-cols-4 gap-3 mb-4">
+    <div class="rounded-3xl p-4 doodle bg-white"><div class="text-2xl">💵</div><div class="text-2xl font-display font-bold" x-text="money(totalSales())"></div><div class="text-xs font-bold text-[#8b7467]">Ventas totales</div></div>
+    <div class="rounded-3xl p-4 doodle bg-white"><div class="text-2xl">🧾</div><div class="text-2xl font-display font-bold" x-text="money(totalCosts())"></div><div class="text-xs font-bold text-[#8b7467]">Coste fabricado</div></div>
+    <div class="rounded-3xl p-4 doodle bg-white"><div class="text-2xl">✨</div><div class="text-2xl font-display font-bold" x-text="money(totalSales()-totalCosts())"></div><div class="text-xs font-bold text-[#8b7467]">Ganancia estimada</div></div>
+    <div class="rounded-3xl p-4 doodle bg-white"><div class="text-2xl">📦</div><div class="text-2xl font-display font-bold" x-text="money(stockValue())"></div><div class="text-xs font-bold text-[#8b7467]">Invertido en stock</div></div>
+  </div>
+  <div class="grid lg:grid-cols-2 gap-4">
+    <div class="rounded-3xl p-4 bg-white doodle"><h3 class="font-display text-xl font-bold mb-3">Productos más rentables</h3><template x-for="r in topRecipes()" :key="r.id"><div class="flex justify-between p-3 rounded-2xl bg-[#fff7e8] mb-2 font-bold"><span x-text="r.name"></span><span x-text="money(r.price-recipeCost(r))"></span></div></template></div>
+    <div class="rounded-3xl p-4 bg-white doodle"><h3 class="font-display text-xl font-bold mb-3">Pagos pendientes</h3><template x-for="o in orders.filter(o=>orderDue(o)>0)" :key="o.id"><button @click="openOrder(o.id)" class="w-full flex justify-between p-3 rounded-2xl bg-[#ffe08a]/45 mb-2 font-bold"><span x-text="'#'+o.num+' · '+clientName(o.clientId)"></span><span x-text="money(orderDue(o))"></span></button></template></div>
+  </div>
+</section>
+
+</main>
+
+<nav class="fixed bottom-0 left-0 right-0 z-40 no-print bg-white/95 backdrop-blur border-t-2 border-[#34241e]/10">
+  <div class="max-w-3xl mx-auto grid grid-cols-6 gap-1 p-2">
+    <template x-for="n in nav" :key="n.id"><button @click="screen=n.id" class="rounded-2xl py-2 font-bold text-[11px]" :class="screen===n.id?'bg-[#34241e] text-white':'text-[#8b7467]'"><div class="text-xl" x-text="n.icon"></div><div x-text="n.label"></div></button></template>
+  </div>
+</nav>
+
+<!-- Order detail modal -->
+<div x-show="detailOpen" x-cloak class="fixed inset-0 z-50 bg-[#34241e]/45 backdrop-blur-sm p-3 overflow-y-auto" @click.self="detailOpen=false">
+  <div class="max-w-4xl mx-auto bg-[#fffdf7] rounded-[2rem] doodle p-4 md:p-6 print-card">
+    <div class="flex items-start justify-between gap-3 no-print"><div><h2 class="font-display text-2xl font-bold" x-text="selectedOrder ? 'Pedido #'+selectedOrder.num+' · '+clientName(selectedOrder.clientId) : ''"></h2><p class="text-[#8b7467] font-bold" x-text="selectedOrder ? selectedOrder.title+' · '+selectedOrder.qty+' uds' : ''"></p></div><button @click="detailOpen=false" class="text-2xl font-bold">×</button></div>
+    <template x-if="selectedOrder"><div>
+      <div class="flex gap-2 overflow-x-auto py-4 no-print"><template x-for="t in ['Resumen','Checklist','Materiales','Pagos','Bitácora','Recibo']"><button @click="orderTab=t" class="px-3 py-2 rounded-2xl font-bold border-2 border-[#34241e]/20 whitespace-nowrap" :class="orderTab===t?'tab-active':'bg-white'" x-text="t"></button></template></div>
+
+      <div x-show="orderTab==='Resumen'" class="space-y-4">
+        <div class="grid md:grid-cols-4 gap-3"><div class="rounded-3xl p-4 bg-[#fff7e8]"><div class="text-xs font-bold text-[#8b7467]">Total</div><div class="text-2xl font-display font-bold" x-text="money(orderTotal(selectedOrder))"></div></div><div class="rounded-3xl p-4 bg-[#fff7e8]"><div class="text-xs font-bold text-[#8b7467]">Entregado</div><div class="text-2xl font-display font-bold" x-text="deliveredQty(selectedOrder)+'/'+selectedOrder.qty"></div></div><div class="rounded-3xl p-4 bg-[#fff7e8]"><div class="text-xs font-bold text-[#8b7467]">Pagado</div><div class="text-2xl font-display font-bold" x-text="money(orderPaid(selectedOrder))"></div></div><div class="rounded-3xl p-4 bg-[#fff7e8]"><div class="text-xs font-bold text-[#8b7467]">Pendiente pago</div><div class="text-2xl font-display font-bold" x-text="money(orderDue(selectedOrder))"></div></div></div>
+        <div class="rounded-3xl p-4 bg-white border-2 border-[#34241e]/10">
+          <div class="grid md:grid-cols-2 gap-3"><div><label class="label">Cantidad total</label><input type="number" min="1" x-model.number="selectedOrder.qty" @input="syncChecklistQty(selectedOrder)" class="field"></div><div><label class="label">Precio unitario</label><input type="number" min="0" step="0.01" x-model.number="selectedOrder.unitPrice" class="field"></div><div><label class="label">Fecha de entrega</label><input type="date" x-model="selectedOrder.due" class="field"></div><div><label class="label">Estado</label><select x-model="selectedOrder.status" class="field"><option>Pendiente</option><option>Comprando</option><option>Fabricando</option><option>Terminado</option><option>Entregado</option></select></div></div>
+          <label class="label mt-3">Notas internas</label><textarea x-model="selectedOrder.notes" rows="3" class="field"></textarea>
+        </div>
+      </div>
+
+      <div x-show="orderTab==='Checklist'" class="space-y-3">
+        <div class="rounded-3xl p-4 bg-[#fff7e8]"><div class="flex justify-between font-bold mb-2"><span x-text="'Entregados '+deliveredQty(selectedOrder)+'/'+selectedOrder.qty"></span><span x-text="orderProgress(selectedOrder)+'%'"></span></div><div class="progress"><div :style="'width:'+orderProgress(selectedOrder)+'%'"></div></div></div>
+        <template x-for="step in selectedOrder.steps" :key="step.id"><div class="rounded-3xl p-4 bg-white border-2 border-[#34241e]/10"><div class="flex items-center justify-between gap-2"><div class="font-display font-bold text-lg" x-text="step.name"></div><button @click="step.done=step.total;addLog(selectedOrder,'Completado: '+step.name)" class="px-3 py-1 rounded-xl bg-[#9ee6c4] font-bold text-sm no-print">Completar</button></div><div class="flex items-center gap-3 mt-3"><button @click="step.done=Math.max(0,step.done-1)" class="w-10 h-10 rounded-xl bg-[#fff7e8] border-2 font-bold no-print">-</button><input type="number" min="0" :max="step.total" x-model.number="step.done" class="flex-1 p-3 rounded-2xl border-2 border-[#34241e]/20 text-center font-bold text-xl bg-[#fff7e8]"><button @click="step.done=Math.min(step.total,step.done+1)" class="w-10 h-10 rounded-xl bg-[#fff7e8] border-2 font-bold no-print">+</button><div class="font-bold min-w-[70px] text-right" x-text="step.done+'/'+step.total"></div></div><div class="progress mt-3"><div :style="'width:'+Math.round((step.done/step.total)*100)+'%'"></div></div></div></template>
+        <div class="grid md:grid-cols-2 gap-2 no-print"><button @click="addStep(selectedOrder)" class="w-full py-3 rounded-2xl border-2 border-dashed border-[#34241e]/30 font-display font-bold">+ Añadir paso</button><button @click="resetStepsFromRecipe(selectedOrder)" class="w-full py-3 rounded-2xl bg-[#ffe08a]/60 font-display font-bold">Regenerar checklist desde receta</button></div>
+      </div>
+
+      <div x-show="orderTab==='Materiales'" class="space-y-3"><template x-for="need in orderNeeds(selectedOrder)" :key="need.id"><div class="rounded-3xl p-4 bg-white border-2 border-[#34241e]/10 flex items-center justify-between"><div><div class="font-display font-bold" x-text="need.name"></div><div class="text-sm text-[#8b7467]" x-text="'Necesitas '+need.need+' '+need.unit+' · Stock '+need.stock+' '+need.unit"></div></div><span class="font-bold px-3 py-1 rounded-full" :class="need.ok?'bg-[#9ee6c4]':'bg-[#ff6b6b]/25'" x-text="need.ok?'OK':'Falta '+(need.need-need.stock)+' '+need.unit"></span></div></template></div>
+
+      <div x-show="orderTab==='Pagos'" class="space-y-3"><div class="grid md:grid-cols-3 gap-3"><div class="rounded-3xl p-4 bg-[#fff7e8]"><div class="text-xs font-bold text-[#8b7467]">Total</div><div class="text-2xl font-display font-bold" x-text="money(orderTotal(selectedOrder))"></div></div><div class="rounded-3xl p-4 bg-[#fff7e8]"><div class="text-xs font-bold text-[#8b7467]">Pagado</div><div class="text-2xl font-display font-bold" x-text="money(orderPaid(selectedOrder))"></div></div><div class="rounded-3xl p-4 bg-[#fff7e8]"><div class="text-xs font-bold text-[#8b7467]">Pendiente</div><div class="text-2xl font-display font-bold" x-text="money(orderDue(selectedOrder))"></div></div></div><div class="rounded-3xl p-4 bg-white border-2 border-[#34241e]/10 no-print"><div class="grid md:grid-cols-3 gap-2"><input x-model.number="paymentDraft.amount" type="number" step="0.01" placeholder="Importe" class="field"><select x-model="paymentDraft.method" class="field"><option>Bizum</option><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option></select><button @click="addPayment(selectedOrder)" class="rounded-2xl bg-[#34241e] text-white font-display font-bold">Añadir pago</button></div></div><template x-for="p in selectedOrder.payments" :key="p.id"><div class="rounded-2xl p-3 bg-white border-2 border-[#34241e]/10 flex justify-between font-bold"><span x-text="p.date+' · '+p.method"></span><span x-text="money(p.amount)"></span></div></template></div>
+
+      <div x-show="orderTab==='Bitácora'" class="space-y-3"><div class="rounded-3xl p-4 bg-white border-2 border-[#34241e]/10 no-print"><textarea x-model="logDraft" rows="3" placeholder="Ej: impresas 18 pegatinas..." class="field"></textarea><button @click="addLog(selectedOrder,logDraft);logDraft=''" class="mt-2 px-4 py-2 rounded-2xl bg-[#34241e] text-white font-display font-bold">Añadir nota</button></div><template x-for="l in selectedOrder.logs" :key="l.id"><div class="rounded-3xl p-4 bg-[#fff7e8] border-2 border-[#34241e]/10"><div class="text-xs font-bold text-[#8b7467]" x-text="l.date"></div><div class="font-bold" x-text="l.text"></div></div></template></div>
+
+      <div x-show="orderTab==='Recibo'" class="space-y-4">
+        <div class="rounded-3xl p-5 bg-white border-2 border-[#34241e]/10" id="receipt"><div class="text-center"><div class="font-display text-3xl font-bold">Taller de Dragones</div><div class="text-[#8b7467] font-bold">Recibo / control de pedido</div></div><hr class="my-4"><div class="grid md:grid-cols-2 gap-3 font-bold"><div>Pedido: <span x-text="'#'+selectedOrder.num"></span></div><div>Fecha: <span x-text="today()"></span></div><div>Cliente: <span x-text="clientName(selectedOrder.clientId)"></span></div><div>Entrega: <span x-text="fmtDate(selectedOrder.due)"></span></div><div>Producto: <span x-text="selectedOrder.title"></span></div><div>Cantidad total: <span x-text="selectedOrder.qty+' uds'"></span></div><div>Entregados: <span x-text="deliveredQty(selectedOrder)+' uds'"></span></div><div>Pendientes de entregar: <span x-text="Math.max(0,selectedOrder.qty-deliveredQty(selectedOrder))+' uds'"></span></div><div>Precio unitario: <span x-text="money(selectedOrder.unitPrice)"></span></div><div>Total: <span x-text="money(orderTotal(selectedOrder))"></span></div><div>Pagado: <span x-text="money(orderPaid(selectedOrder))"></span></div><div>Pendiente pago: <span x-text="money(orderDue(selectedOrder))"></span></div></div><div class="mt-4 text-sm text-[#8b7467]" x-text="selectedOrder.notes"></div></div>
+        <div class="flex flex-wrap gap-2 no-print"><button @click="window.print()" class="btn btn-dark">Imprimir / PDF</button><button @click="copyWhatsApp(selectedOrder)" class="btn bg-[#9ee6c4]">Copiar WhatsApp</button></div>
+      </div>
+    </div></template>
+  </div>
+</div>
+
+<!-- Modals -->
+<div x-show="orderModal" x-cloak class="fixed inset-0 z-50 bg-[#34241e]/45 backdrop-blur-sm p-3 flex items-center justify-center" @click.self="orderModal=false"><div class="w-full max-w-xl bg-[#fffdf7] rounded-[2rem] doodle p-5"><div class="flex justify-between"><h2 class="font-display text-2xl font-bold">Nuevo pedido</h2><button @click="orderModal=false" class="text-2xl font-bold">×</button></div><div class="grid md:grid-cols-2 gap-3 mt-4"><div><label class="label">Cliente</label><select x-model="orderDraft.clientId" class="field"><template x-for="c in clients"><option :value="c.id" x-text="c.name"></option></template></select></div><div><label class="label">Receta / producto</label><select x-model="orderDraft.recipeId" @change="loadRecipeToOrder()" class="field"><template x-for="r in recipes"><option :value="r.id" x-text="r.name"></option></template></select></div><div><label class="label">Cantidad</label><input x-model.number="orderDraft.qty" type="number" min="1" class="field"></div><div><label class="label">Precio unitario</label><input x-model.number="orderDraft.unitPrice" type="number" step="0.01" class="field"></div><div><label class="label">Entrega</label><input x-model="orderDraft.due" type="date" class="field"></div><div><label class="label">Estado</label><select x-model="orderDraft.status" class="field"><option>Pendiente</option><option>Comprando</option><option>Fabricando</option></select></div><div class="md:col-span-2"><label class="label">Notas internas</label><textarea x-model="orderDraft.notes" rows="3" class="field"></textarea></div></div><button @click="saveOrder()" class="mt-4 w-full py-3 rounded-2xl bg-[#34241e] text-white font-display font-bold">Crear pedido</button></div></div>
+
+<div x-show="materialModal" x-cloak class="fixed inset-0 z-50 bg-[#34241e]/45 p-3 flex items-center justify-center" @click.self="materialModal=false"><div class="w-full max-w-md bg-[#fffdf7] rounded-[2rem] doodle p-5"><div class="flex justify-between"><h2 class="font-display text-2xl font-bold" x-text="materialDraft.id?'Editar material':'Nuevo material'"></h2><button @click="materialModal=false" class="text-2xl font-bold">×</button></div><div class="mt-3 p-3 rounded-2xl bg-[#ffe08a]/40 text-sm font-bold">Mete lo que compraste. La app calcula sola el coste por unidad.</div><label class="label mt-3">Nombre</label><input x-model="materialDraft.name" placeholder="Vaso verde" class="field"><label class="label mt-3">Categoría</label><input x-model="materialDraft.category" placeholder="Vasos, lazos, pegatinas..." class="field"><div class="grid grid-cols-2 gap-2 mt-3"><div><label class="label">Cantidad comprada / stock</label><input x-model.number="materialDraft.stock" type="number" class="field"></div><div><label class="label">Unidad</label><select x-model="materialDraft.unit" class="field"><option>ud</option><option>cm</option><option>m</option><option>hojas</option><option>ml</option><option>g</option></select></div></div><label class="label mt-3">Precio total pagado</label><input x-model.number="materialDraft.totalPrice" type="number" step="0.01" class="field"><div class="mt-2 text-sm font-bold text-[#8b7467]" x-text="'Coste calculado: '+money(calcMaterialUnitCost(materialDraft))+' / '+materialDraft.unit"></div><div class="grid grid-cols-2 gap-2 mt-3"><div><label class="label">Stock mínimo</label><input x-model.number="materialDraft.min" type="number" class="field"></div><div><label class="label">Proveedor</label><input x-model="materialDraft.provider" class="field"></div></div><div class="flex gap-2 mt-4"><button x-show="materialDraft.id" @click="deleteMaterial(materialDraft)" class="btn bg-[#ff6b6b]/25">Borrar</button><button @click="saveMaterial()" class="flex-1 btn btn-dark">Guardar</button></div></div></div>
+
+<div x-show="recipeModal" x-cloak class="fixed inset-0 z-50 bg-[#34241e]/45 p-3 flex items-center justify-center overflow-y-auto" @click.self="recipeModal=false"><div class="w-full max-w-2xl bg-[#fffdf7] rounded-[2rem] doodle p-5 my-6"><div class="flex justify-between"><h2 class="font-display text-2xl font-bold" x-text="recipeDraft.id?'Editar receta':'Nueva receta'"></h2><button @click="recipeModal=false" class="text-2xl font-bold">×</button></div><div class="grid md:grid-cols-2 gap-3 mt-4"><div><label class="label">Nombre del producto</label><input x-model="recipeDraft.name" class="field"></div><div><label class="label">Emoji/icono</label><input x-model="recipeDraft.icon" class="field"></div><div><label class="label">Precio venta</label><input x-model.number="recipeDraft.price" type="number" step="0.01" class="field"></div><div><label class="label">Minutos de trabajo</label><input x-model.number="recipeDraft.laborMin" type="number" class="field"></div></div><h3 class="font-display text-xl font-bold mt-5 mb-2">Materiales que usa</h3><template x-for="(it,i) in recipeDraft.items" :key="i"><div class="grid grid-cols-[1fr_110px_40px] gap-2 mb-2"><select x-model="it.materialId" class="field"><template x-for="m in materials"><option :value="m.id" x-text="m.name+' ('+m.unit+')'"></option></template></select><input x-model.number="it.qty" type="number" step="0.01" class="field"><button @click="recipeDraft.items.splice(i,1)" class="rounded-2xl bg-[#ff6b6b]/25 font-bold">×</button></div></template><button @click="recipeDraft.items.push({materialId:materials[0]?.id,qty:1})" class="btn btn-light">+ Añadir material</button>
+<h3 class="font-display text-xl font-bold mt-5 mb-2">Checklist de producción</h3>
+<div class="p-3 rounded-2xl bg-[#ffe08a]/40 text-sm font-bold mb-2">Estos pasos se copiarán automáticamente cuando crees un pedido con esta receta.</div>
+<template x-for="(st,i) in recipeDraft.defaultSteps" :key="i"><div class="grid grid-cols-[1fr_40px] gap-2 mb-2"><input x-model="recipeDraft.defaultSteps[i]" placeholder="Ej: Rosas preparadas" class="field"><button @click="recipeDraft.defaultSteps.splice(i,1)" class="rounded-2xl bg-[#ff6b6b]/25 font-bold">×</button></div></template>
+<button @click="recipeDraft.defaultSteps=recipeDraft.defaultSteps||[];recipeDraft.defaultSteps.push('Nuevo paso')" class="btn btn-light">+ Añadir paso</button>
+<div class="grid grid-cols-3 gap-2 mt-4 text-center"><div class="rounded-2xl bg-[#fff7e8] p-2"><div class="font-bold" x-text="money(recipeCost(recipeDraft))"></div><div class="text-[10px]">Coste</div></div><div class="rounded-2xl bg-[#fff7e8] p-2"><div class="font-bold" x-text="money(recipeDraft.price)"></div><div class="text-[10px]">Venta</div></div><div class="rounded-2xl bg-[#fff7e8] p-2"><div class="font-bold" x-text="money(recipeDraft.price-recipeCost(recipeDraft))"></div><div class="text-[10px]">Beneficio</div></div></div><div class="flex gap-2 mt-4"><button x-show="recipeDraft.id" @click="deleteRecipe(recipeDraft)" class="btn bg-[#ff6b6b]/25">Borrar</button><button @click="saveRecipe()" class="flex-1 btn btn-dark">Guardar receta</button></div></div></div>
+
+<div x-show="clientModal" x-cloak class="fixed inset-0 z-50 bg-[#34241e]/45 p-3 flex items-center justify-center" @click.self="clientModal=false"><div class="w-full max-w-md bg-[#fffdf7] rounded-[2rem] doodle p-5"><div class="flex justify-between"><h2 class="font-display text-2xl font-bold" x-text="clientDraft.id?'Editar cliente':'Nuevo cliente'"></h2><button @click="clientModal=false" class="text-2xl font-bold">×</button></div><label class="label mt-3">Nombre</label><input x-model="clientDraft.name" class="field"><label class="label mt-3">Teléfono</label><input x-model="clientDraft.phone" class="field"><label class="label mt-3">Email</label><input x-model="clientDraft.email" class="field"><label class="label mt-3">Notas</label><textarea x-model="clientDraft.notes" class="field"></textarea><button @click="saveClient()" class="mt-3 w-full py-3 rounded-2xl bg-[#34241e] text-white font-bold">Guardar</button></div></div>
+
+<script>
+function app(){return{
+screen:'home',orderFilter:'Todos',detailOpen:false,orderTab:'Resumen',orderModal:false,materialModal:false,recipeModal:false,clientModal:false,selectedOrder:null,logDraft:'',paymentDraft:{amount:null,method:'Bizum'},
+nav:[{id:'home',icon:'🏠',label:'Inicio'},{id:'orders',icon:'🛍️',label:'Pedidos'},{id:'clients',icon:'👤',label:'Clientes'},{id:'inventory',icon:'📦',label:'Stock'},{id:'recipes',icon:'🧪',label:'Recetas'},{id:'insights',icon:'📈',label:'Insights'}],
+settings:{laborHour:8,hiddenCost:.25},
+clients:[{id:'c1',name:'Laura Gómez',phone:'600111222',email:'',notes:'Prefiere entrega por la tarde.'},{id:'c2',name:'Colegio Peñalvento',phone:'',email:'',notes:'Pedidos grandes de fin de curso.'}],
+materials:[{id:'m1',name:'Vaso verde',category:'Vasos',provider:'Temu',stock:6,min:3,unit:'ud',totalPrice:4.25,unitCost:.71},{id:'m2',name:'Llavero',category:'Llaveros',provider:'AliExpress',stock:32,min:8,unit:'ud',totalPrice:5,unitCost:.16},{id:'m3',name:'Listón',category:'Lazos',provider:'Bazar',stock:500,min:100,unit:'cm',totalPrice:2,unitCost:.004},{id:'m4',name:'Celofán',category:'Packaging',provider:'Bazar',stock:200,min:80,unit:'cm',totalPrice:2,unitCost:.01},{id:'m5',name:'Pegatina impresa',category:'Impresión',provider:'Impresora',stock:60,min:10,unit:'ud',totalPrice:7.2,unitCost:.12}],
+recipes:[{id:'r1',icon:'🥤',name:'Vaso graduación kinder',price:6.95,laborMin:15,defaultSteps:['Vasos comprados','Pegatinas diseñadas','Pegatinas impresas','Pegatinas colocadas','Llaveros listos','Packs montados','Embolsados','Entregados'],items:[{materialId:'m1',qty:1},{materialId:'m2',qty:1},{materialId:'m3',qty:50},{materialId:'m4',qty:40},{materialId:'m5',qty:1}]},{id:'r2',icon:'🎁',name:'Pack detallito dragón',price:4.95,laborMin:8,defaultSteps:['Materiales preparados','Pegatina lista','Montaje terminado','Empaquetado','Entregado'],items:[{materialId:'m2',qty:1},{materialId:'m3',qty:30},{materialId:'m4',qty:25},{materialId:'m5',qty:1}]}],
+orders:[],orderDraft:{},materialDraft:{},recipeDraft:{},clientDraft:{},
+init(){const saved=localStorage.getItem('dragones-v35');if(saved){Object.assign(this,JSON.parse(saved));this.selectedOrder=null;this.detailOpen=false;this.recipes.forEach(r=>{if(!r.defaultSteps)r.defaultSteps=['Materiales preparados','Personalización lista','Montaje terminado','Empaquetado','Entregado']})}else{this.orders=[this.makeOrder({clientId:'c2',recipeId:'r1',qty:30,unitPrice:6.95,due:this.datePlus(3),status:'Fabricando',notes:'Pedido de graduación. Confirmar colores antes de cerrar.'})];this.orders[0].steps[2].done=18;this.orders[0].steps[3].done=10;this.orders[0].steps[5].done=12;this.orders[0].steps[7].done=15;this.orders[0].payments=[{id:Date.now(),date:this.today(),method:'Bizum',amount:50}];this.orders[0].logs=[{id:Date.now()+1,date:this.now(),text:'Pedido creado.'},{id:Date.now()+2,date:this.now(),text:'Entregados 15 vasos de 30.'}]}
+this.$watch('orders',()=>this.persist(),{deep:true});this.$watch('clients',()=>this.persist(),{deep:true});this.$watch('materials',()=>this.persist(),{deep:true});this.$watch('recipes',()=>this.persist(),{deep:true})},
+persist(){localStorage.setItem('dragones-v35',JSON.stringify({clients:this.clients,materials:this.materials,recipes:this.recipes,orders:this.orders,settings:this.settings}))},
+money(n){return(Number(n)||0).toFixed(2).replace('.',',')+'€'},today(){return new Date().toLocaleDateString('es-ES')},now(){return new Date().toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'})},datePlus(d){const x=new Date();x.setDate(x.getDate()+d);return x.toISOString().slice(0,10)},fmtDate(d){if(!d)return'-';return new Date(d+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'short'})},
+copy(t){navigator.clipboard.writeText(t||'');alert('Copiado')},cleanPhone(p){return String(p||'').replace(/\D/g,'').replace(/^0/,'')},
+material(id){return this.materials.find(m=>m.id===id)||{}},recipe(id){return this.recipes.find(r=>r.id===id)||this.recipes[0]},clientName(id){return(this.clients.find(c=>c.id===id)||{}).name||'Sin cliente'},clientOrders(id){return this.orders.filter(o=>o.clientId===id)},clientSpent(id){return this.clientOrders(id).reduce((s,o)=>s+this.orderTotal(o),0)},clientPending(id){return this.clientOrders(id).filter(o=>o.status!=='Entregado').length},
+recipeCost(r){if(!r)return 0;return(r.items||[]).reduce((s,it)=>s+((this.material(it.materialId).unitCost||0)*(Number(it.qty)||0)),0)+((Number(r.laborMin)||0)/60*this.settings.laborHour)+this.settings.hiddenCost},
+orderTotal(o){return(Number(o.qty)||0)*(Number(o.unitPrice)||0)},orderCost(o){return this.recipeCost(this.recipe(o.recipeId))*(Number(o.qty)||0)},orderPaid(o){return(o.payments||[]).reduce((s,p)=>s+(Number(p.amount)||0),0)},orderDue(o){return Math.max(0,this.orderTotal(o)-this.orderPaid(o))},
+deliveredQty(o){const s=(o.steps||[]).find(x=>x.name.toLowerCase().includes('entreg'));return s?Number(s.done)||0:0},completedPacks(o){return Math.min(...(o.steps||[]).map(s=>Number(s.done)||0),o.qty||0)},orderProgress(o){if(!o.steps?.length)return 0;return Math.round(o.steps.reduce((s,st)=>s+((Number(st.done)||0)/(Number(st.total)||1)),0)/o.steps.length*100)},
+statusClass(s){return{'Pendiente':'bg-[#ffe08a]','Comprando':'bg-[#c8b6ff]','Fabricando':'bg-[#ffb39b]','Terminado':'bg-[#9ee6c4]','Entregado':'bg-[#70a1ff]/40'}[s]||'bg-gray-200'},
+goOrders(f){this.orderFilter=f;this.screen='orders'},showUpcoming(){this.orderFilter='Todos';this.screen='orders'},urgentOrders(){return this.orders.filter(o=>o.status!=='Entregado').sort((a,b)=>(a.due||'').localeCompare(b.due||'')).slice(0,5)},
+alertObjects(){let arr=[];this.materials.filter(m=>m.stock<=m.min).forEach(m=>arr.push({key:'m'+m.id,type:'stock',text:'⚠️ Stock bajo: '+m.name}));this.orders.filter(o=>this.orderDue(o)>0&&o.status!=='Entregado').forEach(o=>arr.push({key:'p'+o.id,type:'payment',orderId:o.id,text:'💸 Pago pendiente en pedido #'+o.num+': '+this.money(this.orderDue(o))}));return arr.slice(0,8)},
+handleAlert(a){if(a.type==='payment')this.openOrder(a.orderId);if(a.type==='stock')this.screen='inventory'},
+filteredOrders(){return this.orderFilter==='Todos'?this.orders:this.orders.filter(o=>o.status===this.orderFilter)},
+makeSteps(qty,recipeId){const r=this.recipe(recipeId);let names=(r.defaultSteps&&r.defaultSteps.length)?r.defaultSteps:['Materiales preparados','Personalización lista','Montaje terminado','Empaquetado','Entregado'];return names.map((n,i)=>({id:'s'+Date.now()+i,name:n,done:0,total:Number(qty)||1}))},
+makeOrder(d){const r=this.recipe(d.recipeId);return{id:'o'+Date.now()+Math.random(),num:String(this.orders.length+1).padStart(3,'0'),title:r.name,clientId:d.clientId,recipeId:d.recipeId,qty:Number(d.qty)||1,unitPrice:Number(d.unitPrice)||r.price,due:d.due,status:d.status||'Pendiente',notes:d.notes||'',steps:this.makeSteps(d.qty,d.recipeId),payments:[],logs:[{id:Date.now(),date:this.now(),text:'Pedido creado.'}]}},
+openOrder(id){this.selectedOrder=this.orders.find(o=>o.id===id);this.orderTab='Resumen';this.detailOpen=true},syncChecklistQty(o){(o.steps||[]).forEach(s=>{s.total=Number(o.qty)||1;s.done=Math.min(s.done,s.total)})},resetStepsFromRecipe(o){if(!confirm('Esto reemplazará el checklist actual por el de la receta. ¿Continuar?'))return;o.steps=this.makeSteps(o.qty,o.recipeId);this.addLog(o,'Checklist regenerado desde la receta.')},
+openOrderModal(){this.orderDraft={clientId:this.clients[0]?.id,recipeId:this.recipes[0]?.id,qty:1,unitPrice:this.recipes[0]?.price,due:this.datePlus(7),status:'Pendiente',notes:''};this.orderModal=true},loadRecipeToOrder(){const r=this.recipe(this.orderDraft.recipeId);this.orderDraft.unitPrice=r.price},saveOrder(){const o=this.makeOrder(this.orderDraft);this.orders.unshift(o);this.orderModal=false;this.openOrder(o.id);this.persist()},
+orderNeeds(o){const r=this.recipe(o.recipeId);return(r.items||[]).map(it=>{const m=this.material(it.materialId);const need=(Number(it.qty)||0)*(Number(o.qty)||0);return{id:m.id,name:m.name,unit:m.unit,need,stock:m.stock,ok:m.stock>=need}})},
+addStep(o){const name=prompt('Nombre del paso:');if(!name)return;o.steps.push({id:'s'+Date.now(),name,done:0,total:o.qty});this.addLog(o,'Añadido paso: '+name)},addPayment(o){if(!this.paymentDraft.amount)return;o.payments.push({id:Date.now(),date:this.today(),method:this.paymentDraft.method,amount:Number(this.paymentDraft.amount)});this.addLog(o,'Pago añadido: '+this.money(this.paymentDraft.amount)+' por '+this.paymentDraft.method);this.paymentDraft={amount:null,method:'Bizum'}},addLog(o,text){if(!text)return;o.logs.unshift({id:Date.now()+Math.random(),date:this.now(),text})},
+copyWhatsApp(o){const txt=`🐉 Taller de Dragones\nPedido #${o.num}\nCliente: ${this.clientName(o.clientId)}\nProducto: ${o.title}\nCantidad total: ${o.qty} uds\nEntregados: ${this.deliveredQty(o)} uds\nPendientes de entregar: ${Math.max(0,o.qty-this.deliveredQty(o))} uds\nPrecio unitario: ${this.money(o.unitPrice)}\nTotal: ${this.money(this.orderTotal(o))}\nPagado: ${this.money(this.orderPaid(o))}\nPendiente pago: ${this.money(this.orderDue(o))}\nEntrega: ${this.fmtDate(o.due)}\nEstado: ${o.status}`;navigator.clipboard.writeText(txt);alert('Recibo copiado para WhatsApp')},
+calcMaterialUnitCost(m){return(Number(m.stock)||0)>0?(Number(m.totalPrice)||0)/(Number(m.stock)||1):0},openMaterialModal(){this.materialDraft={id:null,name:'',category:'',provider:'',stock:0,min:0,unit:'ud',totalPrice:0,unitCost:0};this.materialModal=true},editMaterial(m){this.materialDraft=JSON.parse(JSON.stringify(m));this.materialDraft.totalPrice=this.materialDraft.totalPrice||((this.materialDraft.unitCost||0)*(this.materialDraft.stock||0));this.materialModal=true},saveMaterial(){if(!this.materialDraft.name)return;this.materialDraft.unitCost=this.calcMaterialUnitCost(this.materialDraft);if(this.materialDraft.id){const i=this.materials.findIndex(m=>m.id===this.materialDraft.id);this.materials.splice(i,1,JSON.parse(JSON.stringify(this.materialDraft)))}else{this.materialDraft.id='m'+Date.now();this.materials.push(JSON.parse(JSON.stringify(this.materialDraft)))}this.materialModal=false},deleteMaterial(m){if(!confirm('¿Borrar este material?'))return;this.materials=this.materials.filter(x=>x.id!==m.id);this.materialModal=false},
+openRecipeModal(){this.recipeDraft={id:null,icon:'✨',name:'',price:0,laborMin:0,items:[],defaultSteps:['Materiales preparados','Personalización lista','Montaje terminado','Empaquetado','Entregado']};this.recipeModal=true},editRecipe(r){this.recipeDraft=JSON.parse(JSON.stringify(r));if(!this.recipeDraft.defaultSteps)this.recipeDraft.defaultSteps=['Materiales preparados','Personalización lista','Montaje terminado','Empaquetado','Entregado'];this.recipeModal=true},saveRecipe(){if(!this.recipeDraft.name)return;if(this.recipeDraft.id){const i=this.recipes.findIndex(r=>r.id===this.recipeDraft.id);this.recipes.splice(i,1,JSON.parse(JSON.stringify(this.recipeDraft)))}else{this.recipeDraft.id='r'+Date.now();this.recipes.push(JSON.parse(JSON.stringify(this.recipeDraft)))}this.recipeModal=false},duplicateRecipe(r){const c=JSON.parse(JSON.stringify(r));c.id='r'+Date.now();c.name=c.name+' copia';this.recipes.push(c)},deleteRecipe(r){if(!confirm('¿Borrar esta receta?'))return;this.recipes=this.recipes.filter(x=>x.id!==r.id);this.recipeModal=false},
+openClientModal(){this.clientDraft={id:null,name:'',phone:'',email:'',notes:''};this.clientModal=true},editClient(c){this.clientDraft=JSON.parse(JSON.stringify(c));this.clientModal=true},saveClient(){if(!this.clientDraft.name)return;if(this.clientDraft.id){const i=this.clients.findIndex(c=>c.id===this.clientDraft.id);this.clients.splice(i,1,JSON.parse(JSON.stringify(this.clientDraft)))}else{this.clientDraft.id='c'+Date.now();this.clients.push(JSON.parse(JSON.stringify(this.clientDraft)))}this.clientModal=false},
+totalSales(){return this.orders.reduce((s,o)=>s+this.orderTotal(o),0)},totalCosts(){return this.orders.reduce((s,o)=>s+this.orderCost(o),0)},stockValue(){return this.materials.reduce((s,m)=>s+(Number(m.stock)||0)*(Number(m.unitCost)||0),0)},topRecipes(){return [...this.recipes].sort((a,b)=>(b.price-this.recipeCost(b))-(a.price-this.recipeCost(a))).slice(0,5)}
+}}
+</script>
+</body>
+</html>
