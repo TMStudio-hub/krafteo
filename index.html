@@ -3,16 +3,36 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Taller de Dragones Studio V3.6</title>
+  <title>Krafteo Studio V3.6</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
     :root{--cream:#fff7e8;--paper:#fffdf7;--ink:#34241e;--muted:#8b7467;--peach:#ffb39b;--mint:#9ee6c4;--lav:#c8b6ff;--yellow:#ffe08a;--rose:#ff7aa8;--red:#ff6b6b;--blue:#70a1ff}
     body{font-family:Nunito,system-ui,sans-serif;background:radial-gradient(circle at 15% 6%,rgba(255,179,155,.32),transparent 24%),radial-gradient(circle at 85% 3%,rgba(200,182,255,.32),transparent 22%),radial-gradient(circle at 50% 95%,rgba(158,230,196,.32),transparent 22%),var(--cream);color:var(--ink)}
     .font-display{font-family:Fredoka,system-ui,sans-serif}.doodle{border:2px solid var(--ink);box-shadow:4px 5px 0 rgba(52,36,30,.12)}.soft{box-shadow:0 12px 35px rgba(52,36,30,.10)}
     .tab-active{background:var(--ink);color:var(--cream)}.progress{height:10px;background:rgba(52,36,30,.10);border-radius:999px;overflow:hidden}.progress>div{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--peach),var(--lav),var(--mint))}
     input,select,textarea{outline:none}.field{padding:.85rem;border-radius:1rem;border:2px solid rgba(52,36,30,.16);background:#fff7e8;width:100%;font-weight:700}.label{font-size:.75rem;font-weight:900;color:var(--muted);margin-bottom:.25rem;display:block}.btn{border-radius:1rem;font-weight:900;padding:.7rem 1rem}.btn-dark{background:var(--ink);color:white}.btn-light{background:white;border:2px solid rgba(52,36,30,.16)}[x-cloak]{display:none!important}
+.krafteo-logo{
+font-family:'Press Start 2P',system-ui;
+letter-spacing:2px;
+line-height:1.2;
+text-shadow:3px 3px 0 #2b1d18,6px 6px 0 rgba(0,0,0,.15);
+background:linear-gradient(180deg,#7ee787 0%,#57c26f 48%,#347a44 100%);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+font-size:clamp(1.6rem,4vw,3rem);
+}
+.krafteo-sub{
+font-family:Fredoka,system-ui;
+font-weight:700;
+color:#8b7467;
+letter-spacing:1px;
+}
+.hero-card{
+background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(255,247,232,.92));
+}
+
     @media print{.no-print{display:none!important}body{background:white}.print-card{box-shadow:none!important;border:1px solid #ddd!important}}
   </style>
 </head>
@@ -24,7 +44,7 @@
       <div class="w-12 h-12 rounded-full bg-white doodle grid place-items-center overflow-hidden">
         <svg viewBox="0 0 100 100" class="w-11 h-11"><circle cx="50" cy="50" r="39" fill="none" stroke="#34241e" stroke-width="5" stroke-linecap="round" stroke-dasharray="8 7"/><circle cx="38" cy="43" r="4" fill="#34241e"/><circle cx="62" cy="43" r="4" fill="#34241e"/><path d="M35 60 Q50 74 66 60" fill="none" stroke="#34241e" stroke-width="5" stroke-linecap="round"/><path d="M20 26 q10-20 22-4 M58 22 q13-17 24 4" fill="none" stroke="#ff7aa8" stroke-width="4" stroke-linecap="round"/></svg>
       </div>
-      <div class="text-left"><h1 class="font-display text-xl font-bold leading-none">Taller de Dragones</h1><p class="text-xs font-bold text-[#8b7467]">Pedidos · stock · bitácora</p></div>
+      <div class="text-left"><h1 class="font-display text-xl font-bold leading-none">Taller de Dragones</h1><p class="text-xs font-bold text-[#8b7467]">Craft studio · handmade workflow</p></div>
     </button>
     <button @click="openOrderModal()" class="btn btn-dark soft">+ Pedido</button>
   </div>
@@ -32,7 +52,21 @@
 
 <main class="max-w-6xl mx-auto px-4 py-5">
 
+
 <section x-show="screen==='home'" x-cloak>
+  <div class="hero-card rounded-[2rem] doodle p-6 mb-5 text-center relative overflow-hidden">
+    <div class="absolute -top-6 -left-6 text-6xl opacity-10">🟩</div>
+    <div class="absolute -bottom-6 -right-6 text-6xl opacity-10">⛏️</div>
+    <div class="krafteo-logo mb-3">KRAFTEO</div>
+    <div class="krafteo-sub">Craft Studio · Handmade Workflow · Stock & Pedidos</div>
+    <div class="mt-4 flex flex-wrap justify-center gap-2 text-sm font-bold">
+      <span class="px-3 py-2 rounded-2xl bg-[#9ee6c4]">✨ Handmade</span>
+      <span class="px-3 py-2 rounded-2xl bg-[#ffe08a]">📦 Inventario</span>
+      <span class="px-3 py-2 rounded-2xl bg-[#c8b6ff]">🧾 Pedidos</span>
+      <span class="px-3 py-2 rounded-2xl bg-[#ffb39b]">💰 Insights</span>
+    </div>
+  </div>
+
   <div class="grid md:grid-cols-4 gap-3 mb-5">
     <button @click="goOrders('Pendiente')" class="rounded-3xl p-4 doodle bg-white text-left"><div class="text-2xl">🛍️</div><div class="text-2xl font-display font-bold" x-text="orders.filter(o=>o.status==='Pendiente').length"></div><div class="text-xs font-bold text-[#8b7467]">Pedidos pendientes</div></button>
     <button @click="goOrders('Fabricando')" class="rounded-3xl p-4 doodle bg-white text-left"><div class="text-2xl">🏭</div><div class="text-2xl font-display font-bold" x-text="orders.filter(o=>o.status==='Fabricando').length"></div><div class="text-xs font-bold text-[#8b7467]">Fabricando</div></button>
